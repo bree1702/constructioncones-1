@@ -288,7 +288,7 @@ export function VoiceCommands({ onCommand }: VoiceCommandsProps) {
 
   if (!isSupported) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-20">
         <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-4 max-w-xs">
           <div className="flex items-center space-x-2 text-gray-500">
             <MicOff className="w-5 h-5" />
@@ -300,7 +300,7 @@ export function VoiceCommands({ onCommand }: VoiceCommandsProps) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-6 z-20">
       <div className="flex flex-col items-end space-y-3">
         {/* Command History */}
         <AnimatePresence>
@@ -450,7 +450,7 @@ export function VoiceCommands({ onCommand }: VoiceCommandsProps) {
               Continuous listening enabled
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
