@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Volume2, VolumeX, MessageSquare, Zap } from 'lucide-react';
-import { useSpeechSynthesis, useSpeechRecognition } from 'react-speech-kit';
 
 interface VoiceCommandsProps {
   onCommand: (command: string, params?: any) => void;
@@ -12,17 +11,51 @@ export function VoiceCommands({ onCommand }: VoiceCommandsProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState<string>('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
-
-  const { speak, cancel, speaking } = useSpeechSynthesis();
-  const { listen, listening, stop } = useSpeechRecognition({
-    onResult: (result: string) => {
-      handleVoiceCommand(result);
-    },
-  });
+  const [isSupported, setIsSupported] = useState(false);
+  
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
-    setIsSpeaking(speaking);
-  }, [speaking]);
+    // Check if Web Speech API is supported
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speechSynthesis = window.speechSynthesis;
+    
+    if (SpeechRecognition && speechSynthesis) {
+      setIsSupported(true);
+      synthRef.current = speechSynthesis;
+      
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onresult = (event) => {
+        const result = event.results[event.results.length - 1][0].transcript;
+        handleVoiceCommand(result);
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognitionRef.current = recognition;
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      }
+    };
+  }, []);
 
   const handleVoiceCommand = (command: string) => {
     const lowerCommand = command.toLowerCase();
@@ -56,24 +89,47 @@ export function VoiceCommands({ onCommand }: VoiceCommandsProps) {
   };
 
   const speakResponse = (text: string) => {
-    speak({ text, voice: window.speechSynthesis.getVoices()[0] });
+    if (synthRef.current) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      
+      synthRef.current.speak(utterance);
+    }
   };
 
   const toggleListening = () => {
-    if (listening) {
-      stop();
+    if (!isSupported || !recognitionRef.current) return;
+    
+    if (isListening) {
+      recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      listen({ continuous: true, interimResults: false });
+      recognitionRef.current.start();
       setIsListening(true);
     }
   };
 
   const toggleSpeaking = () => {
-    if (speaking) {
-      cancel();
+    if (synthRef.current && isSpeaking) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
     }
   };
+
+  if (!isSupported) {
+    return (
+      <div className="fixed bottom-6 right-6 z-50">
+        <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-4 max-w-xs">
+          <div className="flex items-center space-x-2 text-gray-500">
+            <MicOff className="w-5 h-5" />
+            <span className="text-sm">Voice commands not supported in this browser</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
