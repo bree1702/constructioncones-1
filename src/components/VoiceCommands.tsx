@@ -450,7 +450,7 @@ export function VoiceCommands({ onCommand }: VoiceCommandsProps) {
               Continuous listening enabled
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );
